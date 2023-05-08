@@ -87,12 +87,12 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.redirect('/dashboard')
+        self.render('static/index.html')
 
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
-                (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './'}),
+                (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './static/'}),
                 (r"/relay", RelayHandler),
                 (r"/", MainHandler),
             ]
