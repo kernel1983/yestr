@@ -12,6 +12,7 @@
 
     <textarea id="content"></textarea>
     <br/>
+    <span id="content_event_id"></span>
     <br/>
     <input type="button" value="Sign" id="content_sig_btn"/>
     <br/>
@@ -30,6 +31,7 @@ const contract_abi = [
 // const erc20 = new ethers.Contract(address, abi, provider);
 
 const content = document.getElementById('content');
+const content_event_id = document.getElementById('content_event_id');
 const content_sig_btn = document.getElementById('content_sig_btn');
 
 // function init() {
@@ -54,41 +56,67 @@ window.onload = async () => {
             console.log(account);
             ethereum_address.innerText = account;
 
-            await ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                    chainId: "0x13881",
-                    rpcUrls: ["https://endpoints.omniatech.io/v1/matic/mumbai/public"],
-                    chainName: "Mumbai Testnet",
-                    nativeCurrency: {
-                        name: "MATIC",
-                        symbol: "MATIC",
-                        decimals: 18
-                    },
-                    blockExplorerUrls: ["https://mumbai.polygonscan.com"]
-                }]
-            });
+            // await ethereum.request({
+            //     method: "wallet_addEthereumChain",
+            //     params: [{
+            //         chainId: "0x13881",
+            //         rpcUrls: ["https://endpoints.omniatech.io/v1/matic/mumbai/public"],
+            //         chainName: "Mumbai Testnet",
+            //         nativeCurrency: {
+            //             name: "MATIC",
+            //             symbol: "MATIC",
+            //             decimals: 18
+            //         },
+            //         blockExplorerUrls: ["https://mumbai.polygonscan.com"]
+            //     }]
+            // });
 
-            await ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x13881' }],
-            });
+            // await ethereum.request({
+            //     method: 'wallet_switchEthereumChain',
+            //     params: [{ chainId: '0x13881' }],
+            // });
         }
 
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
-        const contract = new ethers.Contract(contract_address, contract_abi, signer);
+        // const contract = new ethers.Contract(contract_address, contract_abi, signer);
+
         // handle_mint_btn.onclick = async (evt) => {
         //     const handle = new TextEncoder().encode(handle_mint.value);
         //     await contract.mint(handle);
+        // const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
         // }
 
-        // metadata_save_btn.onclick = async (evt) => {
-        //     const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
-        // }
+        var event = {};
+        var event_id = '';
+        var event_sig = '';
+        content.addEventListener('keyup', async (evt) => {
+            const timestamp = Date.now();
+            const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, [], evt.target.value]);
+            // console.log(json);
+            event_id = ethers.utils.sha256(new TextEncoder().encode(json));
+            content_event_id.innerText = event_id;
+
+            event = {
+                "id": event_id,
+                "pubkey": ethereum.selectedAddress,
+                "created_at": timestamp,
+                "kind": 1,
+                "tags": [],
+                "content": evt.target.value,
+            }
+        });
 
         content_sig_btn.onclick = async (evt) => {
-            console.log(content.value);
+            // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+            // const msg = ethers.utils.hexlify(new TextEncoder().encode(content.value));
+            const sig = await ethereum.request({
+                method: "personal_sign",
+                params: [event_id, ethereum.selectedAddress]
+            });
+            event['sig'] = sig;
+            console.log(event);
+
         }
     }
 }
