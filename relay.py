@@ -1,4 +1,8 @@
 
+import os
+
+import pymysql
+
 import tornado.web
 import tornado.ioloop
 import tornado.options
@@ -7,6 +11,25 @@ import tornado.httpclient
 import tornado.gen
 import tornado.escape
 import tornado.websocket
+
+MYSQL_HOST = os.getenv('MYSQL_HOST', '127.0.0.1')
+MYSQL_USER = os.getenv('MYSQL_USER', 'root')
+MYSQL_PASS = os.getenv('MYSQL_PASS', 'root')
+MYSQL_DB = os.getenv('MYSQL_DB', 'yestr')
+
+db_connection = None
+def get_db_cursor():
+    global db_connection
+    if not db_connection or db_connection._closed:
+        db_connection = pymysql.connect(charset='utf8mb4',
+            host=MYSQL_HOST,
+            user=MYSQL_USER,
+            password=MYSQL_PASS,
+            database=MYSQL_DB,
+        )
+    db_connection.ping()
+    db_connection.begin()
+    return db_connection.cursor()
 
 
 class RelayHandler(tornado.websocket.WebSocketHandler):
@@ -31,22 +54,32 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, message):
-        # RelayHandler ["REQ","37930892842193953",{"kinds":[0,1,2,7],"since":1683442864,"limit":450}]
-        # RelayHandler ['EVENT', {'kind': 0, 'pubkey': '0xEEFb88140A1EBC85f49023bBb44BB30E36555849', 'content': '{"name":"KJJ","about":"","picture":""}', 'tags': [['nonce', '19745', '16']], 'created_at': 1683529334, 'sig': '0x47e3c560f619547f8101a91c5d0f383ed072b56c64487f3faaf1eeecad317b5a1ce70d6016b4412a93aa626dbc80b57771658d735087ee46f89f631984cffac11b', 'id': '00008f65c66c19757cf8202dc899e1276fd31c47fe18882b0eeab00fe48c9943'}]
-        # RelayHandler ['REQ', '37930892842193953', {'kinds': [0, 1, 2, 7], 'since': 1683442864, 'limit': 450}]
-        # RelayHandler ['REQ', 'monitor-00008', {'ids': ['00008f65c66c19757cf8202dc899e1276fd31c47fe18882b0eeab00fe48c9943']}]
-        # RelayHandler ['CLOSE', 'monitor-00008']
-        # RelayHandler ['EVENT', {'kind': 1, 'content': 'Hi baby', 'pubkey': '0xEEFb88140A1EBC85f49023bBb44BB30E36555849', 'tags': [], 'created_at': 1683529357, 'id': '872e001a8b79c8bce2d2be4f49afea2941991893fd2e7f21d65aa4df0b914173', 'sig': '0xd48358ae8461182dbc7905a2738fb662dace6a6a327644c29ba919c00115839c73aae1c3e8c3bc9f06d16e9a2b3348dd3fccd6a1d811e728519334071f65b9451b'}]
-        # RelayHandler ['REQ', 'monitor-872e0', {'ids': ['872e001a8b79c8bce2d2be4f49afea2941991893fd2e7f21d65aa4df0b914173']}]
-        # RelayHandler ['CLOSE', 'monitor-872e0']
-
         seq = tornado.escape.json_decode(message)
         print("RelayHandler", seq)
 
         if seq[0] == 'REQ':
-            pass
+            subscription_id = seq[1]
+            cursor = get_db_cursor()
+            cursor.execute('SELECT * FROM events')
+            event_rows = cursor.fetchall()
+            for event_row in event_rows:
+                event = tornado.escape.json_decode(event_row[4])
+                rsp = ["EVENT", subscription_id, event]
+                rsp_json = tornado.escape.json_encode(rsp)
+                self.write_message(rsp_json)
+
         elif seq[0] == 'EVENT':
-            pass
+            kind = seq[1]['kind']
+            event_id = seq[1]['id']
+            addr = seq[1]['pubkey']
+            content = seq[1]['content']
+            timestamp = seq[1]['created_at']
+            data = tornado.escape.json_encode(seq[1])
+
+            cursor = get_db_cursor()
+            cursor.execute('INSERT INTO events (event_id, kind, addr, data, timestamp) VALUES (%s, %s, %s, %s, %s)', (event_id, kind, addr, data, timestamp))
+            db_connection.commit()
+
         elif seq[0] == 'CLOSE':
             pass
 
@@ -63,7 +96,7 @@ class Application(tornado.web.Application):
                 (r"/relay", RelayHandler),
                 (r"/", MainHandler),
             ]
-        settings = {"debug":True}
+        settings = {"debug": True}
 
         tornado.web.Application.__init__(self, handlers, **settings)
 
