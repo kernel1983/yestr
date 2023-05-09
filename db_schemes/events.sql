@@ -1,6 +1,6 @@
 CREATE TABLE `events` (
 	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-	`event_id` CHAR(64) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	`event_id` CHAR(66) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	`kind` INT(10) NOT NULL,
 	`addr` CHAR(42) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	`data` TEXT NOT NULL COLLATE 'utf8mb4_0900_ai_ci',

@@ -87,11 +87,24 @@ window.onload = async () => {
         // const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
         // }
 
+        // Create WebSocket connection.
+        const socket = new WebSocket("ws://192.168.1.9:8010/relay");
+
+        // Connection opened
+        socket.addEventListener("open", (event) => {
+            // socket.send("Hello Server!");
+        });
+
+        // Listen for messages
+        socket.addEventListener("message", (event) => {
+            console.log("Message from server ", event.data);
+        });
+
         var event = {};
         var event_id = '';
         var event_sig = '';
         content.addEventListener('keyup', async (evt) => {
-            const timestamp = Date.now();
+            const timestamp = parseInt(Date.now()/1000);
             const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, [], evt.target.value]);
             // console.log(json);
             event_id = ethers.utils.sha256(new TextEncoder().encode(json));
@@ -116,6 +129,7 @@ window.onload = async () => {
             });
             event['sig'] = sig;
             console.log(event);
+            socket.send( JSON.stringify(['EVENT', event]) );
 
         }
     }
