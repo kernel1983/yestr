@@ -9,6 +9,7 @@
     <span id="ethereum_address"></span>
     <br/>
     <br/>
+    <div id="messages"></div>
 
     <textarea id="content"></textarea>
     <br/>
@@ -30,12 +31,10 @@ const contract_abi = [
 // const contract_address = "";
 // const erc20 = new ethers.Contract(address, abi, provider);
 
+const messages = document.getElementById('messages');
 const content = document.getElementById('content');
 const content_event_id = document.getElementById('content_event_id');
 const content_sig_btn = document.getElementById('content_sig_btn');
-
-// function init() {
-// }
 
 window.onload = async () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -45,8 +44,6 @@ window.onload = async () => {
             const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
         }
 
-        // const rsp = await fetch(`/get_metadata?wallet=${ethereum.selectedAddress}`);
-        // metadata.value = (await rsp.json())['metadata'];
         console.log(ethereum.selectedAddress);
         ethereum_address.innerText = ethereum.selectedAddress;
 
@@ -84,7 +81,7 @@ window.onload = async () => {
         // handle_mint_btn.onclick = async (evt) => {
         //     const handle = new TextEncoder().encode(handle_mint.value);
         //     await contract.mint(handle);
-        // const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
+        //     const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
         // }
 
         // Create WebSocket connection.
@@ -92,15 +89,20 @@ window.onload = async () => {
 
         // Connection opened
         socket.addEventListener("open", (event) => {
-            // socket.send("Hello Server!");
+            const subscription_id = Math.random()*100000000000000000;
+            socket.send(JSON.stringify(["REQ", subscription_id]));
         });
 
         // Listen for messages
         socket.addEventListener("message", (event) => {
             console.log("Message from server ", event.data);
+            const e = JSON.parse(event.data);
+            const p = document.createElement('p');
+            p.innerHTML = e[2]['content'];
+            messages.appendChild(p);
         });
 
-        var event = {};
+        var event = null;
         var event_id = '';
         var event_sig = '';
         content.addEventListener('keyup', async (evt) => {
@@ -121,16 +123,18 @@ window.onload = async () => {
         });
 
         content_sig_btn.onclick = async (evt) => {
-            // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
-            // const msg = ethers.utils.hexlify(new TextEncoder().encode(content.value));
-            const sig = await ethereum.request({
-                method: "personal_sign",
-                params: [event_id, ethereum.selectedAddress]
-            });
-            event['sig'] = sig;
-            console.log(event);
-            socket.send( JSON.stringify(['EVENT', event]) );
-
+            if (event && event_id) {
+                // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+                const sig = await ethereum.request({
+                    method: "personal_sign",
+                    params: [event_id, ethereum.selectedAddress]
+                });
+                event['sig'] = sig;
+                console.log(event);
+                socket.send(JSON.stringify(['EVENT', event]));
+            }else{
+                content_event_id.innerText = 'empty!'
+            }
         }
     }
 }
