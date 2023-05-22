@@ -1,7 +1,8 @@
 
 import os
 
-import pymysql
+# import pymysql
+import rocksdb
 
 import tornado.web
 import tornado.ioloop
@@ -12,25 +13,27 @@ import tornado.gen
 import tornado.escape
 import tornado.websocket
 
-MYSQL_HOST = os.getenv('MYSQL_HOST', '127.0.0.1')
-MYSQL_USER = os.getenv('MYSQL_USER', 'root')
-MYSQL_PASS = os.getenv('MYSQL_PASS', 'root')
-MYSQL_DB = os.getenv('MYSQL_DB', 'yestr')
+# MYSQL_HOST = os.getenv('MYSQL_HOST', '127.0.0.1')
+# MYSQL_USER = os.getenv('MYSQL_USER', 'root')
+# MYSQL_PASS = os.getenv('MYSQL_PASS', 'root')
+# MYSQL_DB = os.getenv('MYSQL_DB', 'yestr')
 
-db_connection = None
-def get_db_cursor():
-    global db_connection
-    if not db_connection or db_connection._closed:
-        db_connection = pymysql.connect(charset='utf8mb4',
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASS,
-            database=MYSQL_DB,
-        )
-    db_connection.ping()
-    db_connection.begin()
-    return db_connection.cursor()
+# db_connection = None
+# def get_db_cursor():
+#     global db_connection
+#     if not db_connection or db_connection._closed:
+#         db_connection = pymysql.connect(charset='utf8mb4',
+#             host=MYSQL_HOST,
+#             user=MYSQL_USER,
+#             password=MYSQL_PASS,
+#             database=MYSQL_DB,
+#         )
+#     db_connection.ping()
+#     db_connection.begin()
+#     return db_connection.cursor()
 
+
+db_conn = rocksdb.DB('test.db', rocksdb.Options(create_if_missing=True))
 
 class RelayHandler(tornado.websocket.WebSocketHandler):
     child_miners = set()
@@ -59,14 +62,29 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
 
         if seq[0] == 'REQ':
             subscription_id = seq[1]
-            cursor = get_db_cursor()
-            cursor.execute('SELECT * FROM events')
-            event_rows = cursor.fetchall()
-            for event_row in event_rows:
-                event = tornado.escape.json_decode(event_row[4])
+            filters = seq[2]
+            since = filters.get('since')
+            until = filters.get('until')
+            limit = filters.get('limit')
+            ids = filters.get('limit')
+            authors = filters.get('authors')
+            kinds = filters.get('kinds')
+
+            event_rows = db_conn.iteritems()
+            event_rows.seek(b'timeline_')
+            for event_key, event_id in event_rows:
+                if not event_key.startswith(b'timeline_'):
+                    break
+                print(event_key, event_id)
+                event_row = db_conn.get(b'event_%s' % event_id)
+                event = tornado.escape.json_decode(event_row)
                 rsp = ["EVENT", subscription_id, event]
                 rsp_json = tornado.escape.json_encode(rsp)
                 self.write_message(rsp_json)
+
+            rsp = ["EOSE", subscription_id]
+            rsp_json = tornado.escape.json_encode(rsp)
+            self.write_message(rsp_json)
 
         elif seq[0] == 'EVENT':
             kind = seq[1]['kind']
@@ -76,9 +94,18 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             timestamp = seq[1]['created_at']
             data = tornado.escape.json_encode(seq[1])
 
-            cursor = get_db_cursor()
-            cursor.execute('INSERT INTO events (event_id, kind, addr, data, timestamp) VALUES (%s, %s, %s, %s, %s)', (event_id, kind, addr, data, timestamp))
-            db_connection.commit()
+            db_conn.put(b'event_%s' % (event_id.encode('utf8'), ), data.encode('utf8'))
+            db_conn.put(b'user_%s_%s' % (addr.encode('utf8'), str(timestamp).encode('utf8')), event_id.encode('utf8'))
+            db_conn.put(b'timeline_%s_%s' % (str(timestamp).encode('utf8'), addr.encode('utf8')), event_id.encode('utf8'))
+
+            if kind == 3:
+                tags = seq[1]['tags']
+                for tag in tags:
+                    if tag[0] == 'p': # follow
+                        pass
+                    elif tag[0] == 'b': # block
+                        pass
+
 
         elif seq[0] == 'CLOSE':
             pass
