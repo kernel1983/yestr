@@ -1,2 +1,3 @@
 .hypothesis/unicode_data/12.1.0/charmap.json.gz
 .pyc
+*.db

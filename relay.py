@@ -1,7 +1,6 @@
 
 import os
 
-# import pymysql
 import rocksdb
 
 import tornado.web
@@ -13,27 +12,10 @@ import tornado.gen
 import tornado.escape
 import tornado.websocket
 
-# MYSQL_HOST = os.getenv('MYSQL_HOST', '127.0.0.1')
-# MYSQL_USER = os.getenv('MYSQL_USER', 'root')
-# MYSQL_PASS = os.getenv('MYSQL_PASS', 'root')
-# MYSQL_DB = os.getenv('MYSQL_DB', 'yestr')
-
-# db_connection = None
-# def get_db_cursor():
-#     global db_connection
-#     if not db_connection or db_connection._closed:
-#         db_connection = pymysql.connect(charset='utf8mb4',
-#             host=MYSQL_HOST,
-#             user=MYSQL_USER,
-#             password=MYSQL_PASS,
-#             database=MYSQL_DB,
-#         )
-#     db_connection.ping()
-#     db_connection.begin()
-#     return db_connection.cursor()
-
 
 db_conn = rocksdb.DB('test.db', rocksdb.Options(create_if_missing=True))
+
+subscriptions = {}
 
 class RelayHandler(tornado.websocket.WebSocketHandler):
     child_miners = set()
@@ -63,6 +45,7 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
         if seq[0] == 'REQ':
             subscription_id = seq[1]
             filters = seq[2]
+            subscriptions[subscription_id] = filters
             since = filters.get('since')
             until = filters.get('until')
             limit = filters.get('limit')

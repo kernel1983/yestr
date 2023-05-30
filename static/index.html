@@ -5,15 +5,23 @@
 
 <body>
 
-  <input type="button" value="Connect Metamask" id="connect_metamask_btn"/>
+  <input type="button" value="Connect Metamask" id="connect_metamask_btn" />
   <span id="ethereum_address"></span>
+  <br/>
+  <br/>
+  <input type="text" id="profile_name" />
+  <br/>
+  <textarea id="profile_about"></textarea>
+  <br/>
+  <input type="text" id="profile_pic_url" />
+  <input type="button" value="Save" id="profile_save_btn" />
   <br/>
   <br/>
   <div id="messages"></div>
 
   <textarea id="content"></textarea>
   <br/>
-  <span id="content_event_id"></span>
+  <span id="content_event_hash_id"></span>
   <br/>
   <input type="button" value="Sign" id="content_sig_btn"/>
   <br/>
@@ -33,8 +41,13 @@ const contract_abi = [
 
 const messages = document.getElementById('messages');
 const content = document.getElementById('content');
-const content_event_id = document.getElementById('content_event_id');
+const content_event_hash_id = document.getElementById('content_event_hash_id');
 const content_sig_btn = document.getElementById('content_sig_btn');
+
+const profile_name = document.getElementById('profile_name');
+const profile_about = document.getElementById('profile_about');
+const profile_pic_url = document.getElementById('profile_pic_url');
+const profile_save_btn = document.getElementById('profile_save_btn');
 
 window.onload = async () => {
   if (typeof window.ethereum !== 'undefined') {
@@ -89,7 +102,8 @@ window.onload = async () => {
     // }
 
     // Create WebSocket connection.
-    const socket = new WebSocket("wss://relay1.bitpow.org/relay");
+    // const socket = new WebSocket("wss://relay1.bitpow.org/relay");
+    const socket = new WebSocket("ws://192.168.1.9:8010/relay");
 
     // Connection opened
     socket.addEventListener("open", (event) => {
@@ -105,22 +119,22 @@ window.onload = async () => {
         return
       }
       const p = document.createElement('p');
-      p.innerHTML = e[2]['content'];
+      p.innerHTML = `<div>${e[2]['content']}</div><div>from ${e[2]['pubkey']}</div>`;
       messages.appendChild(p);
     });
 
     var event = null;
-    var event_id = '';
+    var event_hash_id = '';
     var event_sig = '';
     content.addEventListener('keyup', async (evt) => {
       const timestamp = parseInt(Date.now()/1000);
       const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, [], evt.target.value]);
       // console.log(json);
-      event_id = ethers.utils.sha256(new TextEncoder().encode(json));
-      content_event_id.innerText = event_id;
+      event_hash_id = ethers.utils.sha256(new TextEncoder().encode(json));
+      content_event_hash_id.innerText = event_hash_id;
 
       event = {
-        "id": event_id,
+        "id": event_hash_id,
         "pubkey": ethereum.selectedAddress,
         "created_at": timestamp,
         "kind": 1,
@@ -130,19 +144,57 @@ window.onload = async () => {
     });
 
     content_sig_btn.onclick = async (evt) => {
-      if (event && event_id) {
+      if (event && event_hash_id) {
         // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
         const sig = await ethereum.request({
           method: "personal_sign",
-          params: [event_id, ethereum.selectedAddress]
+          params: [event_hash_id, ethereum.selectedAddress]
         });
         event['sig'] = sig;
         console.log(event);
         socket.send(JSON.stringify(['EVENT', event]));
       }else{
-        content_event_id.innerText = 'empty!'
+        content_event_hash_id.innerText = 'empty!'
       }
     }
+
+
+    profile_save_btn.onclick = async (evt) => {
+      console.log(profile_name.value);
+      console.log(profile_about.value);
+      console.log(profile_pic_url.value);
+      const name = profile_name.value;
+      const about = profile_about.value;
+      const picture = profile_pic_url.value;
+
+      const timestamp = parseInt(Date.now()/1000);
+      const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 0, [], {name: name, about: about, picture: picture}]);
+      console.log(json);
+      const event_hash = ethers.utils.sha256(new TextEncoder().encode(json));
+
+      const metadata_event = {
+        "id": event_hash_id,
+        "pubkey": ethereum.selectedAddress,
+        "created_at": timestamp,
+        "kind": 0,
+        "tags": [],
+        "content": {name: name, about: about, picture: picture},
+      }
+
+      if (name) {
+        // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+        const sig = await ethereum.request({
+          method: "personal_sign",
+          params: [event_hash, ethereum.selectedAddress]
+        });
+        metadata_event['sig'] = sig;
+        console.log(metadata_event);
+        socket.send(JSON.stringify(['EVENT', metadata_event]));
+      }else{
+        // content_event_hash_id.innerText = 'empty!'
+      }
+    }
+
   }
 }
 
