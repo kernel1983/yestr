@@ -76,6 +76,8 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             content = seq[1]['content']
             timestamp = seq[1]['created_at']
             data = tornado.escape.json_encode(seq[1])
+            if kind == 0:
+                db_conn.put(b'profile_%s' % (addr.encode('utf8')), tornado.escape.json_encode(content).encode('utf8'))
 
             db_conn.put(b'event_%s' % (event_id.encode('utf8'), ), data.encode('utf8'))
             db_conn.put(b'user_%s_%s' % (addr.encode('utf8'), str(timestamp).encode('utf8')), event_id.encode('utf8'))
@@ -94,16 +96,24 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             pass
 
 
-
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render('static/index.html')
+
+
+class ProfileHandler(tornado.web.RequestHandler):
+    def get(self):
+        addr = self.get_argument('addr')
+        content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
+        self.finish(tornado.escape.json_decode(content))
+
 
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
                 (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './static/'}),
                 (r"/relay", RelayHandler),
+                (r"/profile", ProfileHandler),
                 (r"/", MainHandler),
             ]
         settings = {"debug": True}
