@@ -44,14 +44,14 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
 
         if seq[0] == 'REQ':
             subscription_id = seq[1]
-            filters = seq[2]
-            subscriptions[subscription_id] = filters
-            since = filters.get('since')
-            until = filters.get('until')
-            limit = filters.get('limit')
-            ids = filters.get('limit')
-            authors = filters.get('authors')
-            kinds = filters.get('kinds')
+            self.filters = seq[2]
+            subscriptions[subscription_id] = self
+            since = self.filters.get('since')
+            until = self.filters.get('until')
+            limit = self.filters.get('limit')
+            ids = self.filters.get('limit')
+            authors = self.filters.get('authors')
+            kinds = self.filters.get('kinds')
 
             event_rows = db_conn.iteritems()
             event_rows.seek(b'timeline_')

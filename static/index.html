@@ -198,12 +198,38 @@ window.onload = async () => {
     }
 
 
-    messages.addEventListener('click', (evt) => {
+    messages.addEventListener('click', async (evt) => {
       if (evt.target.className == 'user_follow'){
-        // console.log(evt.target.parentNode);
-        console.log(evt.target.parentNode.querySelector('.user_addr'));
+        const user_addr = evt.target.parentNode.querySelector('.user_addr');
+        console.log(user_addr.innerText);
+
+        const timestamp = parseInt(Date.now()/1000);
+        const tags = [['follow', user_addr.innerText, '', '']];
+        const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 3, tags, '']);
+        console.log(json);
+        const event_hash = ethers.utils.sha256(new TextEncoder().encode(json));
+
+        const follow_event = {
+          "id": event_hash_id,
+          "pubkey": ethereum.selectedAddress,
+          "created_at": timestamp,
+          "kind": 3,
+          "tags": tags,
+          "content": '',
+        }
+
+        // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+        const sig = await ethereum.request({
+          method: "personal_sign",
+          params: [event_hash, ethereum.selectedAddress]
+        });
+        follow_event['sig'] = sig;
+        console.log(follow_event);
+        socket.send(JSON.stringify(['EVENT', follow_event]));
       };
     });
+
+
   }
 }
 
