@@ -113,13 +113,15 @@ window.onload = async () => {
 
     // Listen for messages
     socket.addEventListener("message", (event) => {
-      // console.log("Message from server ", event.data);
+      console.log("Message from server ", event.data);
       const e = JSON.parse(event.data);
-      if (e[0] != 'EVENT') {
+      if (e[0] != 'EVENT' || e[2]['kind'] != 1) {
         return
       }
       const p = document.createElement('p');
-      p.innerHTML = `<div>${e[2]['content']}</div><div>from ${e[2]['pubkey']}</div>`;
+      p.innerHTML = `<div>${e[2]['content']}</div>
+        <div>from <span class='user_addr'>${e[2]['pubkey']}</span>
+          <button class='user_follow'>Add</button></div>`;
       messages.appendChild(p);
     });
 
@@ -195,6 +197,13 @@ window.onload = async () => {
       }
     }
 
+
+    messages.addEventListener('click', (evt) => {
+      if (evt.target.className == 'user_follow'){
+        // console.log(evt.target.parentNode);
+        console.log(evt.target.parentNode.querySelector('.user_addr'));
+      };
+    });
   }
 }
 
