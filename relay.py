@@ -100,8 +100,12 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render('static/index.html')
 
-
 class ProfileHandler(tornado.web.RequestHandler):
+    def get(self):
+        addr = self.get_argument('addr')
+        self.render('static/profile.html')
+
+class ProfileAPIHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
         content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
@@ -114,6 +118,9 @@ class Application(tornado.web.Application):
                 (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './static/'}),
                 (r"/relay", RelayHandler),
                 (r"/profile", ProfileHandler),
+                (r"/api/profile", ProfileAPIHandler),
+                (r"/api/following", ProfileAPIHandler),
+                (r"/api/followed", ProfileAPIHandler),
                 (r"/", MainHandler),
             ]
         settings = {"debug": True}

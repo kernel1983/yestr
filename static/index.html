@@ -18,12 +18,17 @@
   <br/>
   <br/>
   <div id="messages"></div>
+  <br/>
+  <br/>
+  <br/>
 
   <textarea id="content"></textarea>
   <br/>
   <span id="content_event_hash_id"></span>
   <br/>
   <input type="button" value="Post" id="content_sig_btn"/>
+  <br/>
+  <span id="content_parsed"></span>
   <br/>
   <br/>
   <br/>
@@ -53,6 +58,7 @@ const contract_abi = [
 
 const messages = document.getElementById('messages');
 const content = document.getElementById('content');
+const content_parsed = document.getElementById('content_parsed');
 const content_event_hash_id = document.getElementById('content_event_hash_id');
 const content_sig_btn = document.getElementById('content_sig_btn');
 
@@ -137,8 +143,9 @@ window.onload = async () => {
       }
       const p = document.createElement('p');
       p.innerHTML = `<div>${e[2]['content']}</div>
-        <div>from <span class='user_addr'>${e[2]['pubkey']}</span>
           <button class='msg_like'>Like</button>
+          <button class='msg_unlike'>Unlike</button>
+        <div>from <a class='user_addr' href='/profile?addr=${e[2]['pubkey']}'>${e[2]['pubkey']}</a><br>
           <button class='user_follow'>Follow</button>
           <button class='user_unfollow'>Unfollow</button>
           <button class='user_pm'>PM</button>
@@ -151,8 +158,19 @@ window.onload = async () => {
     var event_sig = '';
     content.addEventListener('keyup', async (evt) => {
       const timestamp = parseInt(Date.now()/1000);
-      const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, [], evt.target.value]);
+      const content = evt.target.value;
+      const content_array = content.split(' ');
+      var tags = [];
+      for(const word of content_array){
+        if(word.startsWith('#')){
+          console.log(word);
+          tags.push(['t', word.slice(1)]);
+        }
+      }
+
+      const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, tags, content]);
       // console.log(json);
+      content_parsed.innerText = json;
       event_hash_id = ethers.utils.sha256(new TextEncoder().encode(json));
       content_event_hash_id.innerText = event_hash_id;
 
@@ -161,8 +179,8 @@ window.onload = async () => {
         "pubkey": ethereum.selectedAddress,
         "created_at": timestamp,
         "kind": 1,
-        "tags": [],
-        "content": evt.target.value,
+        "tags": tags,
+        "content": content,
       }
     });
 
