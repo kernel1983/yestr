@@ -23,7 +23,19 @@
   <br/>
   <span id="content_event_hash_id"></span>
   <br/>
-  <input type="button" value="Sign" id="content_sig_btn"/>
+  <input type="button" value="Post" id="content_sig_btn"/>
+  <br/>
+  <br/>
+  <br/>
+
+
+  To: <span id="pm_to"></span>
+  <br/>
+  <textarea id="pm"></textarea>
+  <br/>
+  <span id="pm_event_hash_id"></span>
+  <br/>
+  <input type="button" value="Send" id="pm_sig_btn"/>
   <br/>
 
 </body>
@@ -43,6 +55,11 @@ const messages = document.getElementById('messages');
 const content = document.getElementById('content');
 const content_event_hash_id = document.getElementById('content_event_hash_id');
 const content_sig_btn = document.getElementById('content_sig_btn');
+
+const pm_to = document.getElementById('pm_to');
+const pm = document.getElementById('pm');
+const pm_event_hash_id = document.getElementById('pm_event_hash_id');
+const pm_sig_btn = document.getElementById('pm_sig_btn');
 
 const profile_name = document.getElementById('profile_name');
 const profile_about = document.getElementById('profile_about');
@@ -121,7 +138,11 @@ window.onload = async () => {
       const p = document.createElement('p');
       p.innerHTML = `<div>${e[2]['content']}</div>
         <div>from <span class='user_addr'>${e[2]['pubkey']}</span>
-          <button class='user_follow'>Add</button></div>`;
+          <button class='msg_like'>Like</button>
+          <button class='user_follow'>Follow</button>
+          <button class='user_unfollow'>Unfollow</button>
+          <button class='user_pm'>PM</button>
+          </div>`;
       messages.appendChild(p);
     });
 
@@ -226,7 +247,13 @@ window.onload = async () => {
         follow_event['sig'] = sig;
         console.log(follow_event);
         socket.send(JSON.stringify(['EVENT', follow_event]));
-      };
+
+      } else if (evt.target.className == 'user_pm'){
+        const user_addr = evt.target.parentNode.querySelector('.user_addr');
+        console.log(user_addr.innerText);
+        pm_to.innerText = user_addr.innerText;
+      }
+
     });
 
 
