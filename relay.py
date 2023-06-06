@@ -100,6 +100,11 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render('static/index.html')
 
+class TweetHandler(tornado.web.RequestHandler):
+    def get(self):
+        event = self.get_argument('event')
+        self.render('static/tweet.html')
+
 class ProfileHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
@@ -111,16 +116,29 @@ class ProfileAPIHandler(tornado.web.RequestHandler):
         content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
         self.finish(tornado.escape.json_decode(content))
 
+class FollowingAPIHandler(tornado.web.RequestHandler):
+    def get(self):
+        addr = self.get_argument('addr')
+        content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
+        self.finish(tornado.escape.json_decode(content))
+
+class FollowedAPIHandler(tornado.web.RequestHandler):
+    def get(self):
+        addr = self.get_argument('addr')
+        content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
+        self.finish(tornado.escape.json_decode(content))
+
 
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
                 (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './static/'}),
                 (r"/relay", RelayHandler),
+                (r"/tweet", TweetHandler),
                 (r"/profile", ProfileHandler),
                 (r"/api/profile", ProfileAPIHandler),
-                (r"/api/following", ProfileAPIHandler),
-                (r"/api/followed", ProfileAPIHandler),
+                (r"/api/following", FollowingAPIHandler),
+                (r"/api/followed", FollowedAPIHandler),
                 (r"/", MainHandler),
             ]
         settings = {"debug": True}
@@ -129,15 +147,10 @@ class Application(tornado.web.Application):
 
 
 def main():
-    # worker_threading = threading.Thread(target=miner.worker_thread)
-    # worker_threading.start()
-    # chain.worker_thread_pause = False
-
     server = Application()
     server.listen(8010, '0.0.0.0')
     tornado.ioloop.IOLoop.instance().start()
 
-    # worker_threading.join()
 
 if __name__ == '__main__':
     main()
