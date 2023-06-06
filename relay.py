@@ -1,7 +1,9 @@
 
 import os
+import json
 
 import rocksdb
+import eth_account
 
 import tornado.web
 import tornado.ioloop
@@ -74,8 +76,16 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             event_id = seq[1]['id']
             addr = seq[1]['pubkey']
             content = seq[1]['content']
+            tags = seq[1]['tags']
             timestamp = seq[1]['created_at']
             data = tornado.escape.json_encode(seq[1])
+            sig = seq[1]['sig']
+
+            msg = json.dumps([0, addr, timestamp, 3, tags, ''], separators=(',', ':'))
+            message = eth_account.messages.encode_defunct(text=msg)
+            print(message)
+            print(eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:])))
+
             if kind == 0:
                 db_conn.put(b'profile_%s' % (addr.encode('utf8')), tornado.escape.json_encode(content).encode('utf8'))
 
@@ -86,10 +96,11 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             if kind == 3:
                 tags = seq[1]['tags']
                 for tag in tags:
-                    if tag[0] == 'p': # follow
-                        pass
-                    elif tag[0] == 'b': # block
-                        pass
+                    if tag[0] == 'follow':
+                        print('follow', tag)
+
+                    elif tag[0] == 'unfollow':
+                        print('unfollow', tag)
 
 
         elif seq[0] == 'CLOSE':
@@ -128,6 +139,15 @@ class FollowedAPIHandler(tornado.web.RequestHandler):
         content = db_conn.get(b'profile_%s' % (addr.encode('utf8')))
         self.finish(tornado.escape.json_decode(content))
 
+class TestAPIHandler(tornado.web.RequestHandler):
+    def post(self):
+        sig = self.request.body
+        print(sig)
+        message = eth_account.messages.encode_defunct(text='abcd')
+        print(message)
+        print(eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:].decode('utf8'))))
+        # print((web3.Web3()).eth.account.recover_message(message, signature=bytes.fromhex(sig[2:].decode('utf8'))))
+
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -139,6 +159,7 @@ class Application(tornado.web.Application):
                 (r"/api/profile", ProfileAPIHandler),
                 (r"/api/following", FollowingAPIHandler),
                 (r"/api/followed", FollowedAPIHandler),
+                (r"/api/test", TestAPIHandler),
                 (r"/", MainHandler),
             ]
         settings = {"debug": True}

@@ -44,6 +44,11 @@
   <br/>
   <input type="button" value="Send" id="pm_sig_btn"/>
   <br/>
+  <br/>
+  <br/>
+
+  <input type="button" value="Test" id="test_btn"/>
+  <br/>
 
 </body>
 
@@ -91,6 +96,8 @@ const profile_name = document.getElementById('profile_name');
 const profile_about = document.getElementById('profile_about');
 const profile_pic_url = document.getElementById('profile_pic_url');
 const profile_save_btn = document.getElementById('profile_save_btn');
+
+const test_btn = document.getElementById('test_btn');
 
 window.onload = async () => {
   if (typeof window.ethereum !== 'undefined') {
@@ -273,7 +280,7 @@ window.onload = async () => {
         const event_hash = ethers.utils.sha256(new TextEncoder().encode(json));
 
         const follow_event = {
-          "id": event_hash_id,
+          "id": event_hash,
           "pubkey": ethereum.selectedAddress,
           "created_at": timestamp,
           "kind": 3,
@@ -284,7 +291,7 @@ window.onload = async () => {
         // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
         const sig = await ethereum.request({
           method: "personal_sign",
-          params: [event_hash, ethereum.selectedAddress]
+          params: [ethers.utils.hexlify(new TextEncoder().encode(json)), ethereum.selectedAddress]
         });
         follow_event['sig'] = sig;
         console.log(follow_event);
@@ -304,6 +311,19 @@ window.onload = async () => {
 
     });
 
+    test_btn.onclick = async (evt) => {
+      // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+      const sig = await ethereum.request({
+        method: 'personal_sign',
+        params: [ethers.utils.hexlify(new TextEncoder().encode('abcd')), ethereum.selectedAddress]
+      });
+      console.log(sig);
+
+      const response = await fetch('/api/test', {
+        method: "POST",
+        body: sig,
+      });
+    }
 
   }
 }
