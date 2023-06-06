@@ -72,16 +72,17 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             self.write_message(rsp_json)
 
         elif seq[0] == 'EVENT':
-            kind = seq[1]['kind']
             event_id = seq[1]['id']
             addr = seq[1]['pubkey']
-            content = seq[1]['content']
-            tags = seq[1]['tags']
             timestamp = seq[1]['created_at']
-            data = tornado.escape.json_encode(seq[1])
+            kind = seq[1]['kind']
+            tags = seq[1]['tags']
+            content = seq[1]['content']
+            print(content)
             sig = seq[1]['sig']
+            data = tornado.escape.json_encode(seq[1])
 
-            msg = json.dumps([0, addr, timestamp, 3, tags, ''], separators=(',', ':'))
+            msg = json.dumps([0, addr, timestamp, kind, tags, content], separators=(',', ':'), ensure_ascii=False)
             message = eth_account.messages.encode_defunct(text=msg)
             print(message)
             print(eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:])))

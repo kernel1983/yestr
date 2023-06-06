@@ -26,11 +26,10 @@
   <br/>
   <textarea id="content"></textarea>
   <br/>
-  <span id="content_event_hash_id"></span>
+  <span id="content_event_json"></span>
   <br/>
   <input type="button" value="Post" id="content_sig_btn"/>
   <br/>
-  <span id="content_parsed"></span>
   <br/>
   <br/>
   <br/>
@@ -83,8 +82,7 @@ if(window.location.hostname == 'relay1.bitpow.org'){
 const messages = document.getElementById('messages');
 const reply_to = document.getElementById('reply_to');
 const content = document.getElementById('content');
-const content_parsed = document.getElementById('content_parsed');
-const content_event_hash_id = document.getElementById('content_event_hash_id');
+const content_event_json = document.getElementById('content_event_json');
 const content_sig_btn = document.getElementById('content_sig_btn');
 
 const pm_to = document.getElementById('pm_to');
@@ -200,10 +198,8 @@ window.onload = async () => {
       }
 
       const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, tags, content]);
-      // console.log(json);
-      content_parsed.innerText = json;
       event_hash_id = ethers.utils.sha256(new TextEncoder().encode(json));
-      content_event_hash_id.innerText = event_hash_id;
+      content_event_json.innerText = json;
 
       event = {
         "id": event_hash_id,
@@ -218,15 +214,20 @@ window.onload = async () => {
     content_sig_btn.onclick = async (evt) => {
       if (event && event_hash_id) {
         // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+        const timestamp = event['created_at'];
+        const tags = event['tags'];
+        const content = event['content'];
+        const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, tags, content]);
+        // console.log(json);
         const sig = await ethereum.request({
           method: "personal_sign",
-          params: [event_hash_id, ethereum.selectedAddress]
+          params: [ethers.utils.hexlify(new TextEncoder().encode(json)), ethereum.selectedAddress]
         });
         event['sig'] = sig;
         console.log(event);
         socket.send(JSON.stringify(['EVENT', event]));
       }else{
-        content_event_hash_id.innerText = 'empty!'
+        content_event_json.innerText = 'empty!'
       }
     }
 
@@ -263,7 +264,7 @@ window.onload = async () => {
         console.log(metadata_event);
         socket.send(JSON.stringify(['EVENT', metadata_event]));
       }else{
-        // content_event_hash_id.innerText = 'empty!'
+        // content_event_json.innerText = 'empty!'
       }
     }
 
