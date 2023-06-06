@@ -51,8 +51,13 @@
 <script type="module">
 import { ethers } from "/static/ethers-5.6.esm.min.js";
 
+let params = new URLSearchParams(window.location.search);
+for (let p of params.entries()) {
+  console.log(p);
+}
+
 const contract_abi = [
-    'function mint(bytes memory handle) public',
+  'function mint(bytes memory handle) public',
 ];
 
 let CHAIN_ID;

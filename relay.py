@@ -117,10 +117,10 @@ class TweetHandler(tornado.web.RequestHandler):
         event = self.get_argument('event')
         self.render('static/tweet.html')
 
-class ProfileHandler(tornado.web.RequestHandler):
+class UserHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
-        self.render('static/profile.html')
+        self.render('static/user.html')
 
 class ProfileAPIHandler(tornado.web.RequestHandler):
     def get(self):
@@ -156,7 +156,7 @@ class Application(tornado.web.Application):
                 (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": './static/'}),
                 (r"/relay", RelayHandler),
                 (r"/tweet", TweetHandler),
-                (r"/profile", ProfileHandler),
+                (r"/user", UserHandler),
                 (r"/api/profile", ProfileAPIHandler),
                 (r"/api/following", FollowingAPIHandler),
                 (r"/api/followed", FollowedAPIHandler),
