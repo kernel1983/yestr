@@ -26,11 +26,10 @@
   <br/>
   <textarea id="content"></textarea>
   <br/>
-  <span id="content_event_hash_id"></span>
+  <span id="content_event_json"></span>
   <br/>
   <input type="button" value="Post" id="content_sig_btn"/>
   <br/>
-  <span id="content_parsed"></span>
   <br/>
   <br/>
   <br/>
@@ -55,10 +54,7 @@ let params = new URLSearchParams(window.location.search);
 for (let p of params.entries()) {
   console.log(p);
 }
-
-const contract_abi = [
-  'function mint(bytes memory handle) public',
-];
+const event_id = params.get('event');
 
 let CHAIN_ID;
 let CHAIN_NAME;
@@ -77,14 +73,10 @@ if(window.location.hostname == 'relay1.bitpow.org'){
   RELAY_URL = "ws://192.168.1.9:8010/relay";
 }
 
-// const contract_address = "";
-// const erc20 = new ethers.Contract(address, abi, provider);
-
 const messages = document.getElementById('messages');
 const reply_to = document.getElementById('reply_to');
 const content = document.getElementById('content');
-const content_parsed = document.getElementById('content_parsed');
-const content_event_hash_id = document.getElementById('content_event_hash_id');
+const content_event_json = document.getElementById('content_event_json');
 const content_sig_btn = document.getElementById('content_sig_btn');
 
 const pm_to = document.getElementById('pm_to');
@@ -141,13 +133,6 @@ window.onload = async () => {
 
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
-    // const contract = new ethers.Contract(contract_address, contract_abi, signer);
-
-    // handle_mint_btn.onclick = async (evt) => {
-    //   const handle = new TextEncoder().encode(handle_mint.value);
-    //   await contract.mint(handle);
-    //   const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
-    // }
 
     // Create WebSocket connection.
     const socket = new WebSocket(RELAY_URL);
@@ -155,7 +140,7 @@ window.onload = async () => {
     // Connection opened
     socket.addEventListener("open", (event) => {
       const subscription_id = Math.random()*100000000000000000;
-      socket.send(JSON.stringify(["REQ", subscription_id, {}]));
+      socket.send(JSON.stringify(["REQ", subscription_id, {'ids': [event_id]}]));
     });
 
     // Listen for messages
@@ -174,7 +159,7 @@ window.onload = async () => {
           <button class='msg_undislike'>Undislike</button>
           <button class='msg_retweet'>Retweet</button>
           <button class='msg_reply'>Reply</button>
-          <div>from <a class='user_addr' href='/profile?addr=${e[2]['pubkey']}'>${e[2]['pubkey']}</a><br>
+          <div>from <a class='user_addr' href='/user?addr=${e[2]['pubkey']}'>${e[2]['pubkey']}</a><br>
             <button class='user_follow'>Follow</button>
             <button class='user_unfollow'>Unfollow</button>
             <button class='user_pm'>PM</button>
@@ -198,10 +183,8 @@ window.onload = async () => {
       }
 
       const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, tags, content]);
-      // console.log(json);
-      content_parsed.innerText = json;
       event_hash_id = ethers.utils.sha256(new TextEncoder().encode(json));
-      content_event_hash_id.innerText = event_hash_id;
+      content_event_json.innerText = json;
 
       event = {
         "id": event_hash_id,
@@ -216,15 +199,20 @@ window.onload = async () => {
     content_sig_btn.onclick = async (evt) => {
       if (event && event_hash_id) {
         // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
+        const timestamp = event['created_at'];
+        const tags = event['tags'];
+        const content = event['content'];
+        const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 1, tags, content]);
+        // console.log(json);
         const sig = await ethereum.request({
           method: "personal_sign",
-          params: [event_hash_id, ethereum.selectedAddress]
+          params: [ethers.utils.hexlify(new TextEncoder().encode(json)), ethereum.selectedAddress]
         });
         event['sig'] = sig;
         console.log(event);
         socket.send(JSON.stringify(['EVENT', event]));
       }else{
-        content_event_hash_id.innerText = 'empty!'
+        content_event_json.innerText = 'empty!'
       }
     }
 

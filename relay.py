@@ -1,6 +1,7 @@
 
 import os
 import json
+import hashlib
 
 import rocksdb
 import eth_account
@@ -48,12 +49,15 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             subscription_id = seq[1]
             self.filters = seq[2]
             subscriptions[subscription_id] = self
-            since = self.filters.get('since')
-            until = self.filters.get('until')
-            limit = self.filters.get('limit')
+
             ids = self.filters.get('ids')
             authors = self.filters.get('authors')
             kinds = self.filters.get('kinds')
+            tags = self.filters.get('tags')
+
+            since = self.filters.get('since')
+            until = self.filters.get('until')
+            limit = self.filters.get('limit')
 
             event_rows = db_conn.iteritems()
             if authors:
@@ -73,11 +77,27 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
                 event_rows = []
                 for event_id in ids:
                     print(event_id)
-                    event_row = db_conn.get(b'event_%s' % event_id)
+                    event_row = db_conn.get(b'event_%s' % event_id.encode('utf8'))
                     event = tornado.escape.json_decode(event_row)
                     rsp = ["EVENT", subscription_id, event]
                     rsp_json = tornado.escape.json_encode(rsp)
                     self.write_message(rsp_json)
+
+            elif tags:
+                for tag in tags:
+                    print(tag)
+                    if tag[0] == 't':
+                        hashed_tag = hashlib.sha256(tag[1].encode('utf8')).hexdigest()
+                        event_rows.seek(b'hashtag_%s' % hashed_tag.encode('utf8'))
+                        for event_key, event_id in event_rows:
+                            if not event_key.startswith(b'hashtag_%s' % hashed_tag.encode('utf8')):
+                                break
+                            print(event_key, event_id)
+                            event_row = db_conn.get(b'event_%s' % event_id)
+                            event = tornado.escape.json_decode(event_row)
+                            rsp = ["EVENT", subscription_id, event]
+                            rsp_json = tornado.escape.json_encode(rsp)
+                            self.write_message(rsp_json)
 
             else:
                 event_rows.seek(b'timeline_')
@@ -110,9 +130,18 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             message = eth_account.messages.encode_defunct(text=msg)
             # print(message)
             sender = eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:]))
+            print(sender)
 
             if kind == 0:
                 db_conn.put(b'profile_%s' % (addr.encode('utf8')), tornado.escape.json_encode(content).encode('utf8'))
+
+            elif kind == 1:
+                tags = seq[1]['tags']
+                for tag in tags:
+                    if tag[0] == 't':
+                        print('t', tag)
+                        hashed_tag = hashlib.sha256(tag[1].encode('utf8')).hexdigest()
+                        db_conn.put(b'hashtag_%s_%s' % (hashed_tag.encode('utf8'), str(timestamp).encode('utf8')), event_id.encode('utf8'))
 
             db_conn.put(b'event_%s' % (event_id.encode('utf8'), ), data.encode('utf8'))
             db_conn.put(b'user_%s_%s' % (addr.encode('utf8'), str(timestamp).encode('utf8')), event_id.encode('utf8'))
