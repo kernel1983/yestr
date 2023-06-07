@@ -55,7 +55,10 @@ let params = new URLSearchParams(window.location.search);
 for (let p of params.entries()) {
   console.log(p);
 }
-const user_id = params.get('addr');
+
+const contract_abi = [
+    'function mint(bytes memory handle) public',
+];
 
 let CHAIN_ID;
 let CHAIN_NAME;
@@ -74,6 +77,9 @@ if(window.location.hostname == 'relay1.bitpow.org'){
   RELAY_URL = "ws://192.168.1.9:8010/relay";
 }
 
+// const contract_address = "";
+// const erc20 = new ethers.Contract(address, abi, provider);
+
 const messages = document.getElementById('messages');
 const reply_to = document.getElementById('reply_to');
 const content = document.getElementById('content');
@@ -90,8 +96,6 @@ const profile_name = document.getElementById('profile_name');
 const profile_about = document.getElementById('profile_about');
 const profile_pic_url = document.getElementById('profile_pic_url');
 const profile_save_btn = document.getElementById('profile_save_btn');
-
-pm_to.innerText = user_id;
 
 window.onload = async () => {
   if (typeof window.ethereum !== 'undefined') {
@@ -137,6 +141,13 @@ window.onload = async () => {
 
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
+    // const contract = new ethers.Contract(contract_address, contract_abi, signer);
+
+    // handle_mint_btn.onclick = async (evt) => {
+    //   const handle = new TextEncoder().encode(handle_mint.value);
+    //   await contract.mint(handle);
+    //   const rsp = await fetch(`/save_metadata?token=${jwt}&wallet=${ethereum.selectedAddress}`, {method:'POST', body: metadata.value});
+    // }
 
     // Create WebSocket connection.
     const socket = new WebSocket(RELAY_URL);
@@ -144,7 +155,7 @@ window.onload = async () => {
     // Connection opened
     socket.addEventListener("open", (event) => {
       const subscription_id = Math.random()*100000000000000000;
-      socket.send(JSON.stringify(["REQ", subscription_id, {"authors": [user_id]}]));
+      socket.send(JSON.stringify(["REQ", subscription_id, {}]));
     });
 
     // Listen for messages
@@ -295,7 +306,6 @@ window.onload = async () => {
         reply_to.innerText = msg_event_id.innerText;
 
       }
-
 
     });
 

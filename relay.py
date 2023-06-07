@@ -51,21 +51,45 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             since = self.filters.get('since')
             until = self.filters.get('until')
             limit = self.filters.get('limit')
-            ids = self.filters.get('limit')
+            ids = self.filters.get('ids')
             authors = self.filters.get('authors')
             kinds = self.filters.get('kinds')
 
             event_rows = db_conn.iteritems()
-            event_rows.seek(b'timeline_')
-            for event_key, event_id in event_rows:
-                if not event_key.startswith(b'timeline_'):
-                    break
-                print(event_key, event_id)
-                event_row = db_conn.get(b'event_%s' % event_id)
-                event = tornado.escape.json_decode(event_row)
-                rsp = ["EVENT", subscription_id, event]
-                rsp_json = tornado.escape.json_encode(rsp)
-                self.write_message(rsp_json)
+            if authors:
+                for author_id in authors:
+                    event_rows.seek(b'user_%s' % author_id.encode('utf8'))
+                    for event_key, event_id in event_rows:
+                        if not event_key.startswith(b'user_'):
+                            break
+                        print(event_key, event_id)
+                        event_row = db_conn.get(b'event_%s' % event_id)
+                        event = tornado.escape.json_decode(event_row)
+                        rsp = ["EVENT", subscription_id, event]
+                        rsp_json = tornado.escape.json_encode(rsp)
+                        self.write_message(rsp_json)
+
+            elif ids:
+                event_rows = []
+                for event_id in ids:
+                    print(event_id)
+                    event_row = db_conn.get(b'event_%s' % event_id)
+                    event = tornado.escape.json_decode(event_row)
+                    rsp = ["EVENT", subscription_id, event]
+                    rsp_json = tornado.escape.json_encode(rsp)
+                    self.write_message(rsp_json)
+
+            else:
+                event_rows.seek(b'timeline_')
+                for event_key, event_id in event_rows:
+                    if not event_key.startswith(b'timeline_'):
+                        break
+                    print(event_key, event_id)
+                    event_row = db_conn.get(b'event_%s' % event_id)
+                    event = tornado.escape.json_decode(event_row)
+                    rsp = ["EVENT", subscription_id, event]
+                    rsp_json = tornado.escape.json_encode(rsp)
+                    self.write_message(rsp_json)
 
             rsp = ["EOSE", subscription_id]
             rsp_json = tornado.escape.json_encode(rsp)
@@ -78,14 +102,14 @@ class RelayHandler(tornado.websocket.WebSocketHandler):
             kind = seq[1]['kind']
             tags = seq[1]['tags']
             content = seq[1]['content']
-            print(content)
+            # print(content)
             sig = seq[1]['sig']
             data = tornado.escape.json_encode(seq[1])
 
             msg = json.dumps([0, addr, timestamp, kind, tags, content], separators=(',', ':'), ensure_ascii=False)
             message = eth_account.messages.encode_defunct(text=msg)
-            print(message)
-            print(eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:])))
+            # print(message)
+            sender = eth_account.Account.recover_message(message, signature=bytes.fromhex(sig[2:]))
 
             if kind == 0:
                 db_conn.put(b'profile_%s' % (addr.encode('utf8')), tornado.escape.json_encode(content).encode('utf8'))
@@ -122,6 +146,11 @@ class UserHandler(tornado.web.RequestHandler):
         addr = self.get_argument('addr')
         self.render('static/user.html')
 
+class TagHandler(tornado.web.RequestHandler):
+    def get(self):
+        tag = self.get_argument('tag')
+        self.render('static/tag.html')
+
 class ProfileAPIHandler(tornado.web.RequestHandler):
     def get(self):
         addr = self.get_argument('addr')
@@ -157,6 +186,7 @@ class Application(tornado.web.Application):
                 (r"/relay", RelayHandler),
                 (r"/tweet", TweetHandler),
                 (r"/user", UserHandler),
+                (r"/tag", TagHandler),
                 (r"/api/profile", ProfileAPIHandler),
                 (r"/api/following", FollowingAPIHandler),
                 (r"/api/followed", FollowedAPIHandler),
