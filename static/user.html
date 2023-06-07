@@ -169,14 +169,14 @@ window.onload = async () => {
       messages.appendChild(p);
     });
 
-    var event = null;
-    var event_hash_id = '';
-    var event_sig = '';
+    let event = null;
+    let event_hash_id = '';
+    let event_sig = '';
     content.addEventListener('keyup', async (evt) => {
       const timestamp = parseInt(Date.now()/1000);
       const content = evt.target.value;
       const content_array = content.split(' ');
-      var tags = [];
+      let tags = [];
       for(const word of content_array){
         if(word.startsWith('#')){
           console.log(word);

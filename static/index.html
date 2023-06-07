@@ -9,11 +9,11 @@
   <span id="ethereum_address"></span>
   <br/>
   <br/>
-  <input type="text" id="profile_name" />
+  <input type="text" id="profile_name" placeholder="Name" />
   <br/>
-  <textarea id="profile_about"></textarea>
+  <textarea id="profile_about" placeholder="About"></textarea>
   <br/>
-  <input type="text" id="profile_pic_url" />
+  <input type="text" id="profile_pic_url" placeholder="Profile picture URL" />
   <input type="button" value="Save" id="profile_save_btn" />
   <br/>
   <br/>
@@ -166,7 +166,20 @@ window.onload = async () => {
         return
       }
       const p = document.createElement('p');
-      p.innerHTML = `<div>${e[2]['content']}</div>
+      const content_array = e[2]['content'].split(' ');
+      let words = [];
+      for(const word of content_array){
+        if(word.startsWith('#')){
+          console.log(word);
+          const tag = word.slice(1);
+          words.push(`<a href='/tag?tag=${tag}'>${word}</a>`);
+        }else{
+          words.push(word);
+        }
+      }
+      const content = words.join(' ');
+
+      p.innerHTML = `<div>${content}</div>
           <a class='msg_event_id' href='/tweet?event=${e[2]['id']}'>${e[2]['id']}</a><br>
           <button class='msg_like'>Like</button>
           <button class='msg_unlike'>Unlike</button>
@@ -182,14 +195,14 @@ window.onload = async () => {
       messages.appendChild(p);
     });
 
-    var event = null;
-    var event_hash_id = '';
-    var event_sig = '';
+    let event = null;
+    let event_hash_id = '';
+    let event_sig = '';
     content.addEventListener('keyup', async (evt) => {
       const timestamp = parseInt(Date.now()/1000);
       const content = evt.target.value;
       const content_array = content.split(' ');
-      var tags = [];
+      let tags = [];
       for(const word of content_array){
         if(word.startsWith('#')){
           console.log(word);

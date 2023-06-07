@@ -9,13 +9,6 @@
   <span id="ethereum_address"></span>
   <br/>
   <br/>
-  <input type="text" id="profile_name" />
-  <br/>
-  <textarea id="profile_about"></textarea>
-  <br/>
-  <input type="text" id="profile_pic_url" />
-  <input type="button" value="Save" id="profile_save_btn" />
-  <br/>
   <br/>
   <div id="messages"></div>
   <br/>
@@ -86,10 +79,6 @@ const pm = document.getElementById('pm');
 const pm_event_hash_id = document.getElementById('pm_event_hash_id');
 const pm_sig_btn = document.getElementById('pm_sig_btn');
 
-const profile_name = document.getElementById('profile_name');
-const profile_about = document.getElementById('profile_about');
-const profile_pic_url = document.getElementById('profile_pic_url');
-const profile_save_btn = document.getElementById('profile_save_btn');
 
 window.onload = async () => {
   if (typeof window.ethereum !== 'undefined') {
@@ -169,14 +158,14 @@ window.onload = async () => {
       messages.appendChild(p);
     });
 
-    var event = null;
-    var event_hash_id = '';
-    var event_sig = '';
+    let event = null;
+    let event_hash_id = '';
+    let event_sig = '';
     content.addEventListener('keyup', async (evt) => {
       const timestamp = parseInt(Date.now()/1000);
       const content = evt.target.value;
       const content_array = content.split(' ');
-      var tags = [];
+      let tags = [];
       for(const word of content_array){
         if(word.startsWith('#')){
           console.log(word);
@@ -218,42 +207,6 @@ window.onload = async () => {
       }
     }
 
-
-    profile_save_btn.onclick = async (evt) => {
-      console.log(profile_name.value);
-      console.log(profile_about.value);
-      console.log(profile_pic_url.value);
-      const name = profile_name.value;
-      const about = profile_about.value;
-      const picture = profile_pic_url.value;
-
-      const timestamp = parseInt(Date.now()/1000);
-      const json = JSON.stringify([0, ethereum.selectedAddress, timestamp, 0, [], {name: name, about: about, picture: picture}]);
-      console.log(json);
-      const event_hash = ethers.utils.sha256(new TextEncoder().encode(json));
-
-      const metadata_event = {
-        "id": event_hash_id,
-        "pubkey": ethereum.selectedAddress,
-        "created_at": timestamp,
-        "kind": 0,
-        "tags": [],
-        "content": {name: name, about: about, picture: picture},
-      }
-
-      if (name) {
-        // console.log(ethers.utils.hexlify(new TextEncoder().encode(content.value)));
-        const sig = await ethereum.request({
-          method: "personal_sign",
-          params: [event_hash, ethereum.selectedAddress]
-        });
-        metadata_event['sig'] = sig;
-        console.log(metadata_event);
-        socket.send(JSON.stringify(['EVENT', metadata_event]));
-      }else{
-        // content_event_hash_id.innerText = 'empty!'
-      }
-    }
 
 
     messages.addEventListener('click', async (evt) => {
